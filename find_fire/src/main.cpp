@@ -22,12 +22,14 @@ int right_ir = 6;
 int sensor_values[4];
 int outside_counter;
 
-double left_servo_angle = 90;
-double right_servo_angle = 90;
+double left_servo_angle = 20;
+double right_servo_angle = 20;
 Servo left_servo;
 Servo right_servo;
 int LEFT_SERVO_PIN = 11;
 int RIGHT_SERVO_PIN = 10;
+
+int state = 0;
 
 int Ix[4];
 int Iy[4];
@@ -66,8 +68,6 @@ void left_sensor_on(bool left_on){
     }
   
   }
-  
-
 
 void ir_setup(){
     pinMode(left_ir, OUTPUT); 
@@ -90,8 +90,7 @@ void ir_setup(){
   }
 
 // communicates with the active camera 
-void ir_camera_loop(int *output_arr)
-{
+void ir_camera_loop(int *output_arr){
     ledState = !ledState;
     if (ledState) { digitalWrite(ledPin,HIGH); } else { digitalWrite(ledPin,LOW); }
 
@@ -155,30 +154,29 @@ void calculate_distance(){
   // takes the input of the servo angle and calculates distance and postion of candle
 }
 
-void servo_move(int *data){
+void servo_move_to_fire(int* data){
   const int MIDDLE = 512, NO_DATA = 1023, LOWER_MIDDLE_BOUND = 430, UPPER_MIDDLE_BOUND = 580, MIN_ANGLE = 10, MAX_ANGLE = 170;
   bool left_servo_not_correct = (LOWER_MIDDLE_BOUND > data[0] || data[0] > UPPER_MIDDLE_BOUND) && data[0] != NO_DATA;
   bool right_servo_not_correct = (LOWER_MIDDLE_BOUND > data[2] || data[2] > UPPER_MIDDLE_BOUND) && data[2] != NO_DATA;
 
   if (left_servo_not_correct){
     if(data[0] < MIDDLE){
-      left_servo_angle = (double) max(left_servo_angle--, MIN_ANGLE);
+      left_servo_angle = (double) max(left_servo_angle -= 0.25, MIN_ANGLE);
     } 
     else {
-      left_servo_angle = (double) min(left_servo_angle++, MAX_ANGLE);
+      left_servo_angle = (double) min(left_servo_angle += 0.25, MAX_ANGLE);
     }
     
   }
   if(right_servo_not_correct){
     if(data[2] < MIDDLE){
-      right_servo_angle = (double) max(right_servo_angle--, MIN_ANGLE);
+      right_servo_angle = (double) max(right_servo_angle -= 0.25, MIN_ANGLE);
     } 
     else {
-      right_servo_angle = (double) min(right_servo_angle++, MAX_ANGLE);
+      right_servo_angle = (double) min(right_servo_angle += 0.25, MAX_ANGLE);
     }
   }
   
-
   // find the distance and the position of the candle
   // SOH CAH TOA
   int dist_between_servos_mm = 200;
@@ -196,6 +194,55 @@ void servo_move(int *data){
   
 }
 
+int counter = 0;
+void search_for_light(int* data){
+  double SPEED = 0.5;  
+  int NO_DATA = 1023;
+  bool left_found = false;
+  bool right_found = false;
+  
+  if (left_servo_angle < 170){
+    if (data[0] == NO_DATA){
+      left_servo_angle += SPEED;
+      left_servo.write((int)left_servo_angle);
+    }
+    else{
+      left_found = true;
+    }
+    
+  }
+  
+  if (right_servo_angle < 170){
+    if (data[2] == NO_DATA){
+      right_servo_angle += SPEED;
+      right_servo.write((int)right_servo_angle);
+    }
+    else{
+      right_found = true;
+    }
+  }
+  if (left_found && right_found){
+    counter++;
+    if(counter > 200){
+      state = 2;
+      counter = 0;
+    }
+    
+    return;
+  }
+  else if (right_servo_angle >= 168 || left_servo_angle >= 168){
+    if (right_servo_angle >= 160 && left_servo_angle >= 160){
+      state = 0;
+    }
+    
+    right_servo_angle = 20;
+    right_servo.write(right_servo_angle);
+    left_servo_angle = 20;
+    left_servo.write(left_servo_angle);
+    delay(1000);
+  }
+}
+
 void setup(){
   left_servo.attach(LEFT_SERVO_PIN);
   right_servo.attach(RIGHT_SERVO_PIN);
@@ -208,7 +255,24 @@ void setup(){
 }
 
 void loop(){
+  // 0: left x, 1: left y, 2: right x, 3: right y, 4: angle from car, 5: distance to candle
   int to_send[6];
+
+  if (Serial.available()){
+    String input = Serial.readString();
+    // Convert from char to int
+    state = input[0] - '0';
+  }
+  Serial.println(state);
+  
+  // State 0 = Nothing
+  // State 1 = Search for light
+  // State 2 = Move to light
+
+  if(state == 0);
+  else if (state == 1) search_for_light(to_send);
+  else if (state == 2) servo_move_to_fire(to_send);
+  else if (state == 3) calculate_distance();
 
   // First sensor
   left_sensor_on(ir_bool);  // change active sensor true is left, False is right
@@ -221,8 +285,7 @@ void loop(){
   ir_bool = !ir_bool;
 
   send_data(to_send);
-  servo_move(to_send);
-
+  servo_move_to_fire(to_send);
 
   delay(10);
 }
