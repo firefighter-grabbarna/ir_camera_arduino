@@ -1,7 +1,3 @@
-/************************************************************
- *  this is the old implementation. Use parts of it.
-*************************************************************/
-
 // Wii Remote IR sensor  test sample code  by kako
 // modified output for Wii-BlobTrack program by RobotFreak
 
@@ -22,37 +18,22 @@ int right_ir = 6;
 int sensor_values[4];
 int outside_counter;
 
-double left_servo_angle = 20;
-double right_servo_angle = 20;
+double left_servo_angle = 90;
+double right_servo_angle = 90;
 Servo left_servo;
 Servo right_servo;
+Servo arm_servo;
 int LEFT_SERVO_PIN = 11;
 int RIGHT_SERVO_PIN = 10;
+int ARM_SERVO_PIN = 9;
 
 int state = 0;
 
 int Ix[4];
 int Iy[4];
 int s;
-/*
-enum sensor {
-  Left = true,
-  Right = false
-};
 
-void handleSensor(sensor side){
-    if(side){
-      digitalWrite(left_ir, HIGH);
-      digitalWrite(right_ir, LOW);
-    } else {
-      digitalWrite(left_ir, LOW);
-      digitalWrite(right_ir, HIGH);
-    }
-  }
-
-*/
-void Write_2bytes(byte d1, byte d2)
-{
+void Write_2bytes(byte d1, byte d2){
     Wire.beginTransmission(slaveAddress);
     Wire.write(d1); Wire.write(d2);
     Wire.endTransmission();
@@ -66,7 +47,6 @@ void left_sensor_on(bool left_on){
       digitalWrite(left_ir, LOW);
       digitalWrite(right_ir, HIGH);
     }
-  
   }
 
 void ir_setup(){
@@ -150,8 +130,29 @@ void send_data(int *data){
   Serial.println("");
 }
 
-void calculate_distance(){
-  // takes the input of the servo angle and calculates distance and postion of candle
+void calculate_light_coords(int *data){
+  const int L = 170;
+  double l_rad = (left_servo_angle) * PI / 180;
+  double r_rad = -(right_servo_angle) * PI / 180;
+  double s = L*sin(l_rad) / sin(l_rad + r_rad);
+  double x = L/2 - cos(r_rad) * s;
+  double y = sin(r_rad) * s;
+  
+  data[4] = (int) x;
+  data[5] = (int) y;
+
+  if(y < 200 && abs(x) < 30){
+    state = 3;
+  }
+}
+
+void fire_spanker(int* data){
+  data[4] = 1023;
+  data[5] = 1023;
+  arm_servo.write(20);
+  delay(2000);
+  arm_servo.write(165);
+  delay(2000);
 }
 
 void servo_move_to_fire(int* data){
@@ -176,22 +177,11 @@ void servo_move_to_fire(int* data){
       right_servo_angle = (double) min(right_servo_angle += 0.25, MAX_ANGLE);
     }
   }
-  
-  // find the distance and the position of the candle
-  // SOH CAH TOA
-  int dist_between_servos_mm = 200;
-  double a = cos(left_servo_angle) * dist_between_servos_mm;
-  double distance_to_candle = sin(left_servo_angle) * a;
-  double position_of_candle = a / cos(left_servo_angle);
-  data[5] = (int) distance_to_candle;
-  data[6] = (int) position_of_candle;
-
 
   left_servo.write((int)left_servo_angle);
   right_servo.write((int)right_servo_angle);
-
-  // Move servo so that the fire is in the middle of the camera
   
+  calculate_light_coords(data);
 }
 
 int counter = 0;
@@ -223,7 +213,7 @@ void search_for_light(int* data){
   }
   if (left_found && right_found){
     counter++;
-    if(counter > 200){
+    if(counter > 10){
       state = 2;
       counter = 0;
     }
@@ -246,6 +236,8 @@ void search_for_light(int* data){
 void setup(){
   left_servo.attach(LEFT_SERVO_PIN);
   right_servo.attach(RIGHT_SERVO_PIN);
+  arm_servo.attach(ARM_SERVO_PIN);
+  arm_servo.write(165);
   
   left_sensor_on(true);
   ir_setup();
@@ -272,7 +264,7 @@ void loop(){
   if(state == 0);
   else if (state == 1) search_for_light(to_send);
   else if (state == 2) servo_move_to_fire(to_send);
-  else if (state == 3) calculate_distance();
+  else if (state == 3) fire_spanker(to_send);
 
   // First sensor
   left_sensor_on(ir_bool);  // change active sensor true is left, False is right
