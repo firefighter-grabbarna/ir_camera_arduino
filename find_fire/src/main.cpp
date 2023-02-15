@@ -10,13 +10,13 @@ int slaveAddress;
 int ledPin = 13;
 boolean ledState = false;
 byte data_buf[16];
-int i;
+int i; // Really?
 
 bool ir_bool = true;
 int left_ir = 7;
 int right_ir = 6;
-int sensor_values[4];
-int outside_counter;
+int sensor_values[4]; // Remove?
+int outside_counter; // Remove?
 
 double left_servo_angle = 90;
 double right_servo_angle = 90;
@@ -33,14 +33,25 @@ int Ix[4];
 int Iy[4];
 int s;
 
-void Write_2bytes(byte d1, byte d2){
+/**
+ * @brief Writes 2 bytes to slaveAddress.
+ * 
+ * @param d1 Byte 1
+ * @param d2 Byte 2
+ */
+void write_2bytes(byte d1, byte d2){
     Wire.beginTransmission(slaveAddress);
     Wire.write(d1); Wire.write(d2);
     Wire.endTransmission();
 }
 
+/**
+ * @brief Toggles which sensor is active
+ * 
+ * @param left_on True when left active, false when right active.
+ */
 void left_sensor_on(bool left_on){
-    if(left_on){
+    if (left_on){
       digitalWrite(left_ir, HIGH);
       digitalWrite(right_ir, LOW);
     } else {
@@ -49,6 +60,9 @@ void left_sensor_on(bool left_on){
     }
   }
 
+/**
+ * @brief Setup for an ir-camera.
+ */
 void ir_setup(){
     pinMode(left_ir, OUTPUT); 
     pinMode(right_ir, OUTPUT); 
@@ -60,16 +74,20 @@ void ir_setup(){
     Wire.begin();
     // IR sensor initialize
     // No one knows why these hex numbers work
-    Write_2bytes(0x30,0x01); delay(10); 
-    Write_2bytes(0x30,0x08); delay(10);
-    Write_2bytes(0x06,0x90); delay(10);
-    Write_2bytes(0x08,0xC0); delay(10);
-    Write_2bytes(0x1A,0x40); delay(10);
-    Write_2bytes(0x33,0x33); delay(10);
+    write_2bytes(0x30,0x01); delay(10); 
+    write_2bytes(0x30,0x08); delay(10);
+    write_2bytes(0x06,0x90); delay(10);
+    write_2bytes(0x08,0xC0); delay(10);
+    write_2bytes(0x1A,0x40); delay(10);
+    write_2bytes(0x33,0x33); delay(10);
     delay(100);
   }
 
-// communicates with the active camera 
+/**
+ * @brief Communicates with the active camera 
+ * 
+ * @param output_arr The data to send to the ir-camera
+ */
 void ir_camera_loop(int *output_arr){
     ledState = !ledState;
     if (ledState) { digitalWrite(ledPin,HIGH); } else { digitalWrite(ledPin,LOW); }
@@ -80,7 +98,10 @@ void ir_camera_loop(int *output_arr){
     Wire.endTransmission();
 
     Wire.requestFrom(slaveAddress, 16);        // Request the 2 byte heading (MSB comes first)
-    for (i=0;i<16;i++) { data_buf[i]=0; }
+    for (i = 0; i < 16; i++) { 
+      data_buf[i]=0; 
+    }
+    
     i=0;
     while(Wire.available() && i < 16) { 
         data_buf[i] = Wire.read();
@@ -89,145 +110,206 @@ void ir_camera_loop(int *output_arr){
 
     Ix[0] = data_buf[1];
     Iy[0] = data_buf[2];
-    s   = data_buf[3];
+    s = data_buf[3];
     Ix[0] += (s & 0x30) <<4;
     Iy[0] += (s & 0xC0) <<2;
 
     Ix[1] = data_buf[4];
     Iy[1] = data_buf[5];
-    s   = data_buf[6];
+    s = data_buf[6];
     Ix[1] += (s & 0x30) <<4;
     Iy[1] += (s & 0xC0) <<2;
 
     Ix[2] = data_buf[7];
     Iy[2] = data_buf[8];
-    s   = data_buf[9];
+    s = data_buf[9];
     Ix[2] += (s & 0x30) <<4;
     Iy[2] += (s & 0xC0) <<2;
 
     Ix[3] = data_buf[10];
     Iy[3] = data_buf[11];
-    s   = data_buf[12];
+    s = data_buf[12];
     Ix[3] += (s & 0x30) <<4;
     Iy[3] += (s & 0xC0) <<2;
 
     // The left of the sensor and right sensor occupy diffrent parts of the array
     int offset = 0;
-    if(ir_bool) offset = 2;
+    if (ir_bool) offset = 2;
     output_arr[offset] = Ix[0], 
-    output_arr[1+offset] = Iy[0];
+    output_arr[1 + offset] = Iy[0];
 
     return;
 }
 
+/**
+ * @brief Sends data over serial
+ * 
+ * @param data The array of data to be sent
+ */
 void send_data(int *data){
   //int array_size = sizeof(data)/sizeof(int);
   int array_size = 6;
   for(int i = 0; i < array_size; i++){
     Serial.print(data[i]);
-    if(i != (array_size -1)) Serial.print(",");
+    if(i != (array_size -1)){
+      Serial.print(",");
+    }
   }
   Serial.println("");
 }
 
-void calculate_light_coords(int *data){
-  const int L = 170;
-  double l_rad = (left_servo_angle) * PI / 180;
-  double r_rad = -(right_servo_angle) * PI / 180;
-  double s = L*sin(l_rad) / sin(l_rad + r_rad);
-  double x = L/2 - cos(r_rad) * s;
-  double y = sin(r_rad) * s;
+/**
+ * @brief Calculates the coordinates of the candle
+ * 
+ * @param data Array where the coordinates (and more) are stored
+ */
+void calculate_candle_coords(int *data){
+  const int DIST_ORIGIN_SENSORS_MM = 85;
+
+  // Convert degrees to radians and mirror right servo angle
+  double left_servo_rad = (left_servo_angle) * PI / 180;
+  double right_servo_rad = -(right_servo_angle) * PI / 180;
+
+  // Parameter in line expressed in parametric form
+  double parameter = 2 * DIST_ORIGIN_SENSORS_MM * sin(left_servo_rad) / sin(left_servo_rad + right_servo_rad);
   
-  data[4] = (int) x;
-  data[5] = (int) y;
+  // Coordinates of the light assuming origin in-between the two IR-cameras
+  double x_coord = -cos(right_servo_rad) * parameter + DIST_ORIGIN_SENSORS_MM;
+  double y_coord = sin(right_servo_rad) * parameter;
+  
+  data[4] = (int) x_coord;
+  data[5] = (int) y_coord;
 
-  if(y < 200 && abs(x) < 30){
-    state = 3;
+  // If the light is close enough to be extinguished 
+  const int MAX_DISTANCE_Y = 200, MAX_DISTANCE_X = 30;
+  if (y_coord < MAX_DISTANCE_Y && abs(x_coord) < MAX_DISTANCE_X){
+    state = 3; // Put out fire
   }
 }
 
-void fire_spanker(int* data){
-  data[4] = 1023;
-  data[5] = 1023;
-  arm_servo.write(20);
+/**
+ * @brief Tries to extinguish the fire by rotating
+ * the servo controlling the extinguishing mechanism.
+ * 
+ * @param data Used to reset x and y coordinates of candle.
+ */
+void extinguish_fire(int* data){
+  const int NO_DATA = 1023;
+  const int MIN_ANGLE = 20;
+  const int MAX_ANGLE = 165;
+  data[4] = NO_DATA;
+  data[5] = NO_DATA;
+  arm_servo.write(MIN_ANGLE);
   delay(2000);
-  arm_servo.write(165);
+  arm_servo.write(MAX_ANGLE);
   delay(2000);
 }
 
-void servo_move_to_fire(int* data){
-  const int MIDDLE = 512, NO_DATA = 1023, LOWER_MIDDLE_BOUND = 430, UPPER_MIDDLE_BOUND = 580, MIN_ANGLE = 10, MAX_ANGLE = 170;
-  bool left_servo_not_correct = (LOWER_MIDDLE_BOUND > data[0] || data[0] > UPPER_MIDDLE_BOUND) && data[0] != NO_DATA;
-  bool right_servo_not_correct = (LOWER_MIDDLE_BOUND > data[2] || data[2] > UPPER_MIDDLE_BOUND) && data[2] != NO_DATA;
+/**
+ * @brief Follows the light with the cameras by rotating the servos
+ * holding the ir-cameras
+ * 
+ * @param data Array storing x and y values given by ir-cameras (and more)
+ */
+void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get better accuracy
+  const double MIN_ANGLE = 10;
+  const double MAX_ANGLE = 170;
+  const int MIDDLE = 512;
+  const int NO_DATA = 1023;
+  const int MARGIN = 70;
+  const int LEFT_SENSOR_X_VALUE = data[0];
+  const int RIGHT_SENSOR_X_VALUE = data[2];
 
-  if (left_servo_not_correct){
-    if(data[0] < MIDDLE){
-      left_servo_angle = (double) max(left_servo_angle -= 0.25, MIN_ANGLE);
+  bool left_servo_incorrect = (LEFT_SENSOR_X_VALUE < MIDDLE - MARGIN || LEFT_SENSOR_X_VALUE > MIDDLE + MARGIN)
+                               && LEFT_SENSOR_X_VALUE != NO_DATA;
+  bool right_servo_incorrect = (RIGHT_SENSOR_X_VALUE < MIDDLE - MARGIN || RIGHT_SENSOR_X_VALUE > MIDDLE + MARGIN) 
+                                && RIGHT_SENSOR_X_VALUE != NO_DATA;
+
+  if (left_servo_incorrect){
+    if(LEFT_SENSOR_X_VALUE < MIDDLE){
+      double new_angle = max(left_servo_angle -= 0.25, MIN_ANGLE);
+      left_servo_angle = new_angle;
     } 
     else {
-      left_servo_angle = (double) min(left_servo_angle += 0.25, MAX_ANGLE);
+      double new_angle = min(left_servo_angle += 0.25, MAX_ANGLE);
+      left_servo_angle = new_angle;
     }
-    
   }
-  if(right_servo_not_correct){
-    if(data[2] < MIDDLE){
-      right_servo_angle = (double) max(right_servo_angle -= 0.25, MIN_ANGLE);
+
+  if(right_servo_incorrect){
+    if(RIGHT_SENSOR_X_VALUE < MIDDLE){
+      double new_angle = max(right_servo_angle -= 0.25, MIN_ANGLE);
+      right_servo_angle = new_angle;
     } 
     else {
-      right_servo_angle = (double) min(right_servo_angle += 0.25, MAX_ANGLE);
+      double new_angle = min(right_servo_angle += 0.25, MAX_ANGLE);
+      right_servo_angle = new_angle;
     }
   }
 
   left_servo.write((int)left_servo_angle);
   right_servo.write((int)right_servo_angle);
   
-  calculate_light_coords(data);
+  calculate_candle_coords(data);
 }
 
 int counter = 0;
 void search_for_light(int* data){
-  double SPEED = 0.5;  
-  int NO_DATA = 1023;
+  const double ROTATION_SPEED = 0.5;  
+  const int NO_DATA = 1023;
+  const int MAX_ANGLE = 170;
   bool left_found = false;
   bool right_found = false;
   
-  if (left_servo_angle < 170){
-    if (data[0] == NO_DATA){
-      left_servo_angle += SPEED;
+  // Sweep left servo until light found
+  // or max angle hit
+  const int LEFT_SENSOR_X_VALUE = data[0];
+  if (left_servo_angle < MAX_ANGLE){
+    if (LEFT_SENSOR_X_VALUE == NO_DATA){
+      left_servo_angle += ROTATION_SPEED;
       left_servo.write((int)left_servo_angle);
     }
     else{
       left_found = true;
     }
-    
   }
   
-  if (right_servo_angle < 170){
-    if (data[2] == NO_DATA){
-      right_servo_angle += SPEED;
+  // Sweep right servo until light found
+  // or max angle hit
+  const int RIGHT_SENSOR_X_VALUE = data[2];
+  if (right_servo_angle < MAX_ANGLE){
+    if (RIGHT_SENSOR_X_VALUE == NO_DATA){
+      right_servo_angle += ROTATION_SPEED;
       right_servo.write((int)right_servo_angle);
     }
     else{
       right_found = true;
     }
   }
+
+  // If both found, check multiple times
+  // to avoid false positives
+  const int TIMES_TO_CHECK = 10;
+  const int ERROR_MARGIN_DEG = 2;
   if (left_found && right_found){
     counter++;
-    if(counter > 10){
-      state = 2;
+    if(counter > TIMES_TO_CHECK){
+      state = 2; // Follow light state
       counter = 0;
     }
-    
     return;
   }
-  else if (right_servo_angle >= 168 || left_servo_angle >= 168){
+  else if (right_servo_angle >= (MAX_ANGLE - ERROR_MARGIN_DEG) || left_servo_angle >= (MAX_ANGLE - ERROR_MARGIN_DEG)){
+    // Why?
     if (right_servo_angle >= 160 && left_servo_angle >= 160){
       state = 0;
     }
     
-    right_servo_angle = 20;
+    // Reset angle to try again
+    const int MIN_ANGLE = 20;
+    right_servo_angle = MIN_ANGLE;
     right_servo.write(right_servo_angle);
-    left_servo_angle = 20;
+    left_servo_angle = MIN_ANGLE;
     left_servo.write(left_servo_angle);
     delay(1000);
   }
@@ -247,7 +329,7 @@ void setup(){
 }
 
 void loop(){
-  // 0: left x, 1: left y, 2: right x, 3: right y, 4: angle from car, 5: distance to candle
+  // 0: left x, 1: left y, 2: right x, 3: right y, 4: candle x, 5: candle y 
   int to_send[6];
 
   if (Serial.available()){
@@ -263,8 +345,8 @@ void loop(){
 
   if(state == 0);
   else if (state == 1) search_for_light(to_send);
-  else if (state == 2) servo_move_to_fire(to_send);
-  else if (state == 3) fire_spanker(to_send);
+  else if (state == 2) servo_follow_fire(to_send);
+  else if (state == 3) extinguish_fire(to_send);
 
   // First sensor
   left_sensor_on(ir_bool);  // change active sensor true is left, False is right
@@ -277,7 +359,7 @@ void loop(){
   ir_bool = !ir_bool;
 
   send_data(to_send);
-  servo_move_to_fire(to_send);
+  servo_follow_fire(to_send);
 
   delay(10);
 }
