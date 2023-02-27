@@ -360,8 +360,10 @@ void loop(){
 
   if (Serial.available()){
     String input = Serial.readStringUntil('\n');
-    char state_command = input[0];
-    state = char_to_int(state_command);
+    if (input[0] == '1' || input[0] == '2' || input[0] == '3' || input[0] == '4'){
+      char state_command = input[0];
+      state = char_to_int(state_command);
+    }
   }
   //Serial.println(state);
   
