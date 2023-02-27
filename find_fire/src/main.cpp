@@ -226,33 +226,21 @@ void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get
                                && LEFT_SENSOR_X_VALUE != NO_DATA;
   bool right_servo_incorrect = (RIGHT_SENSOR_X_VALUE < MIDDLE - MARGIN || RIGHT_SENSOR_X_VALUE > MIDDLE + MARGIN) 
                                 && RIGHT_SENSOR_X_VALUE != NO_DATA;
-  const double Kp = 0.1;
-  double speed_left = Kp * (LEFT_SENSOR_X_VALUE - left_servo_angle); 
-  double speed_right = Kp * (RIGHT_SENSOR_X_VALUE - right_servo_angle); 
+  const double Kp = 0.005;
+  double speed_left = Kp * (LEFT_SENSOR_X_VALUE - MIDDLE); 
+  double speed_right = Kp * (RIGHT_SENSOR_X_VALUE - MIDDLE); 
 
   // Adjust left servo
   double new_angle;
   if (left_servo_incorrect){
-    if(LEFT_SENSOR_X_VALUE < MIDDLE){
-      new_angle = max(left_servo_angle -= speed_left, MIN_ANGLE);
-      left_servo_angle = new_angle;
-    } 
-    else {
-      new_angle = min(left_servo_angle += speed_left, MAX_ANGLE);
-      left_servo_angle = new_angle;
-    }
+    new_angle = max(left_servo_angle + speed_left, MIN_ANGLE);
+    left_servo_angle = new_angle;
   }
 
   // Adjust right servo
   if(right_servo_incorrect){
-    if(RIGHT_SENSOR_X_VALUE < MIDDLE){
-      new_angle = max(right_servo_angle -= speed_right, MIN_ANGLE);
-      right_servo_angle = new_angle;
-    } 
-    else {
-      new_angle = min(right_servo_angle += speed_right, MAX_ANGLE);
-      right_servo_angle = new_angle;
-    }
+    new_angle = max(right_servo_angle + speed_right, MIN_ANGLE);
+    right_servo_angle = new_angle;
   }
 
   left_servo.write((int)left_servo_angle);
@@ -367,7 +355,7 @@ void loop(){
 
   if (Serial.available()){
     String input = Serial.readStringUntil('\n');
-    if (input[0] == '1' || input[0] == '2' || input[0] == '3' || input[0] == '4'){
+    if (input[0] >= '0' && input[0] <= '9'){
       char state_command = input[0];
       state = char_to_int(state_command);
     }
