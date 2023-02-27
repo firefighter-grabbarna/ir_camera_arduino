@@ -363,7 +363,7 @@ void loop(){
     char state_command = input[0];
     state = char_to_int(state_command);
   }
-  Serial.println(state);
+  //Serial.println(state);
   
   // State 0 = Nothing
   // State 1 = Search for light
@@ -377,6 +377,9 @@ void loop(){
       break;
     case 3:
       extinguish_fire(to_send);
+      break;
+    case 4:
+      send_data(to_send);
       break;
     default:
       break;
@@ -398,7 +401,6 @@ void loop(){
   ir_camera_loop(to_send); // do the communication
   ir_bool = !ir_bool;
 
-  send_data(to_send);
   servo_follow_fire(to_send);
 
   delay(10);
