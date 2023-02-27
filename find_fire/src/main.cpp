@@ -225,6 +225,7 @@ void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get
   bool right_servo_incorrect = (RIGHT_SENSOR_X_VALUE < MIDDLE - MARGIN || RIGHT_SENSOR_X_VALUE > MIDDLE + MARGIN) 
                                 && RIGHT_SENSOR_X_VALUE != NO_DATA;
 
+  // Adjust left servo
   if (left_servo_incorrect){
     if(LEFT_SENSOR_X_VALUE < MIDDLE){
       double new_angle = max(left_servo_angle -= 0.25, MIN_ANGLE);
@@ -236,6 +237,7 @@ void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get
     }
   }
 
+  // Adjust right servo
   if(right_servo_incorrect){
     if(RIGHT_SENSOR_X_VALUE < MIDDLE){
       double new_angle = max(right_servo_angle -= 0.25, MIN_ANGLE);
@@ -315,6 +317,16 @@ void search_for_light(int* data){
   }
 }
 
+/**
+ * @brief Converts a char to an int
+ * 
+ * @param character The character to convert
+ * @return int 
+ */
+int char_to_int(char character){
+  return character - '0';
+}
+
 void setup(){
   left_servo.attach(LEFT_SERVO_PIN);
   right_servo.attach(RIGHT_SERVO_PIN);
@@ -334,19 +346,35 @@ void loop(){
 
   if (Serial.available()){
     String input = Serial.readString();
-    // Convert from char to int
-    state = input[0] - '0';
+    //state = input[0] - '0';
+    char state_command = input[0];
+    state = char_to_int(state_command);
   }
   Serial.println(state);
   
   // State 0 = Nothing
   // State 1 = Search for light
   // State 2 = Move to light
-
-  if(state == 0);
+  switch(state){
+    case 1:
+      search_for_light(to_send);
+      break;
+    case 2:
+      servo_follow_fire(to_send);
+      break;
+    case 3:
+      extinguish_fire(to_send);
+      break;
+    default:
+      break;
+  }
+  /*
+  if (state == 0);
   else if (state == 1) search_for_light(to_send);
   else if (state == 2) servo_follow_fire(to_send);
   else if (state == 3) extinguish_fire(to_send);
+  */
+  
 
   // First sensor
   left_sensor_on(ir_bool);  // change active sensor true is left, False is right
