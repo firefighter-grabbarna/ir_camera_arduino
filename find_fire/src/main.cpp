@@ -182,11 +182,11 @@ void calculate_candle_coords(int *data){
   data[4] = (int) x_coord;
   data[5] = (int) y_coord;
 
-  // If the light is close enough to be extinguished 
-  const int MAX_DISTANCE_Y = 200, MAX_DISTANCE_X = 30;
-  if (y_coord < MAX_DISTANCE_Y && abs(x_coord) < MAX_DISTANCE_X){
-    state = 3; // Put out fire
-  }
+  // // If the light is close enough to be extinguished 
+  // const int MAX_DISTANCE_Y = 200, MAX_DISTANCE_X = 30;
+  // if (y_coord < MAX_DISTANCE_Y && abs(x_coord) < MAX_DISTANCE_X){
+  //   state = 3; // Put out fire
+  // }
 }
 
 /**
@@ -218,7 +218,8 @@ void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get
   const double MAX_ANGLE = 170;
   const int MIDDLE = 512;
   const int NO_DATA = 1023;
-  const int MARGIN = 70;
+  const int MARGIN = 30;
+  const double SPEED = 0.15; 
   const int LEFT_SENSOR_X_VALUE = data[0];
   const int RIGHT_SENSOR_X_VALUE = data[2];
 
@@ -231,11 +232,11 @@ void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get
   double new_angle;
   if (left_servo_incorrect){
     if(LEFT_SENSOR_X_VALUE < MIDDLE){
-      new_angle = max(left_servo_angle -= 0.25, MIN_ANGLE);
+      new_angle = max(left_servo_angle -= SPEED, MIN_ANGLE);
       left_servo_angle = new_angle;
     } 
     else {
-      new_angle = min(left_servo_angle += 0.25, MAX_ANGLE);
+      new_angle = min(left_servo_angle += SPEED, MAX_ANGLE);
       left_servo_angle = new_angle;
     }
   }
@@ -243,11 +244,11 @@ void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get
   // Adjust right servo
   if(right_servo_incorrect){
     if(RIGHT_SENSOR_X_VALUE < MIDDLE){
-      new_angle = max(right_servo_angle -= 0.25, MIN_ANGLE);
+      new_angle = max(right_servo_angle -= SPEED, MIN_ANGLE);
       right_servo_angle = new_angle;
     } 
     else {
-      new_angle = min(right_servo_angle += 0.25, MAX_ANGLE);
+      new_angle = min(right_servo_angle += SPEED, MAX_ANGLE);
       right_servo_angle = new_angle;
     }
   }
@@ -280,7 +281,7 @@ void search_for_light(int* data){
   const int MAX_ANGLE = 170;
   bool left_found = false;
   bool right_found = false;
-  
+
   // Sweep left servo until light found
   // or max angle hit
   const int LEFT_SENSOR_X_VALUE = data[0];
@@ -293,7 +294,7 @@ void search_for_light(int* data){
       left_found = true;
     }
   }
-  
+
   // Sweep right servo until light found
   // or max angle hit
   const int RIGHT_SENSOR_X_VALUE = data[2];
@@ -315,6 +316,7 @@ void search_for_light(int* data){
     search_for_light_ctr++;
     if(search_for_light_ctr > TIMES_TO_CHECK){
       state = 2; // Follow light state
+      Serial.println("found");
       search_for_light_ctr = 0;
     }
     return;
@@ -323,6 +325,7 @@ void search_for_light(int* data){
     // Why?
     if (right_servo_angle >= 160 && left_servo_angle >= 160){
       state = 0;
+      Serial.println("not found");
     }
     
     reset_ir_servo_angles();
@@ -358,6 +361,8 @@ void loop(){
   // 0: left x, 1: left y, 2: right x, 3: right y, 4: candle x, 5: candle y 
   int to_send[6];
 
+  int prev_state = state;
+
   if (Serial.available()){
     String input = Serial.readStringUntil('\n');
     char state_command = input[0];
@@ -368,6 +373,7 @@ void loop(){
   // State 0 = Nothing
   // State 1 = Search for light
   // State 2 = Move to light
+  //state = 1;
   switch(state){
     case 1:
       search_for_light(to_send);
@@ -377,9 +383,19 @@ void loop(){
       break;
     case 3:
       extinguish_fire(to_send);
+      Serial.println("done");
+      state = 0;
       break;
     case 4:
       send_data(to_send);
+      state = prev_state;
+      break;
+    case 5:
+      right_servo_angle = 90;
+      left_servo_angle = 90;
+      right_servo.write((int)right_servo_angle);
+      left_servo.write((int)left_servo_angle);
+      state = prev_state;
       break;
     default:
       break;
@@ -401,7 +417,7 @@ void loop(){
   ir_camera_loop(to_send); // do the communication
   ir_bool = !ir_bool;
 
-  servo_follow_fire(to_send);
+  //servo_follow_fire(to_send);
 
   delay(10);
 }
