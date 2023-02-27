@@ -10,7 +10,7 @@ int slaveAddress;
 int ledPin = 13;
 boolean ledState = false;
 byte data_buf[16];
-int i; // Really?
+int iter_val;
 
 bool ir_bool = true;
 int left_ir = 7;
@@ -28,6 +28,7 @@ int RIGHT_SERVO_PIN = 10;
 int ARM_SERVO_PIN = 9;
 
 int state = 0;
+int search_for_light_ctr = 0;
 
 int Ix[4];
 int Iy[4];
@@ -69,7 +70,8 @@ void ir_setup(){
     digitalWrite(left_ir, HIGH); // Can only handle one at a time
   
     slaveAddress = IRsensorAddress >> 1;   // This results in 0x21 as the address to pass to TWI
-    Serial.begin(38400);
+    //Serial.begin(38400);
+    Serial.begin(115200);
     pinMode(ledPin, OUTPUT);      // Set the LED pin as output
     Wire.begin();
     // IR sensor initialize
@@ -99,39 +101,40 @@ void ir_camera_loop(int *output_arr){
     Wire.endTransmission();
 
     Wire.requestFrom(slaveAddress, 16);        // Request the 2 byte heading (MSB comes first)
-    for (i = 0; i < 16; i++) { 
-      data_buf[i]=0; 
+    for (iter_val = 0; iter_val < 16; iter_val++) { 
+      data_buf[iter_val] = 0; 
     }
     
-    i=0;
-    while(Wire.available() && i < 16) { 
-        data_buf[i] = Wire.read();
-        i++;
+    iter_val = 0;
+    while(Wire.available() && iter_val < 16) { 
+        data_buf[iter_val] = Wire.read();
+        iter_val++;
     }
 
+    // More black magic
     Ix[0] = data_buf[1];
     Iy[0] = data_buf[2];
     s = data_buf[3];
-    Ix[0] += (s & 0x30) <<4;
-    Iy[0] += (s & 0xC0) <<2;
+    Ix[0] += (s & 0x30) << 4;
+    Iy[0] += (s & 0xC0) << 2;
 
     Ix[1] = data_buf[4];
     Iy[1] = data_buf[5];
     s = data_buf[6];
-    Ix[1] += (s & 0x30) <<4;
-    Iy[1] += (s & 0xC0) <<2;
+    Ix[1] += (s & 0x30) << 4;
+    Iy[1] += (s & 0xC0) << 2;
 
     Ix[2] = data_buf[7];
     Iy[2] = data_buf[8];
     s = data_buf[9];
-    Ix[2] += (s & 0x30) <<4;
-    Iy[2] += (s & 0xC0) <<2;
+    Ix[2] += (s & 0x30) << 4;
+    Iy[2] += (s & 0xC0) << 2;
 
     Ix[3] = data_buf[10];
     Iy[3] = data_buf[11];
     s = data_buf[12];
-    Ix[3] += (s & 0x30) <<4;
-    Iy[3] += (s & 0xC0) <<2;
+    Ix[3] += (s & 0x30) << 4;
+    Iy[3] += (s & 0xC0) << 2;
 
     // The left of the sensor and right sensor occupy diffrent parts of the array
     int offset = 0;
@@ -227,13 +230,14 @@ void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get
                                 && RIGHT_SENSOR_X_VALUE != NO_DATA;
 
   // Adjust left servo
+  double new_angle;
   if (left_servo_incorrect){
     if(LEFT_SENSOR_X_VALUE < MIDDLE){
-      double new_angle = max(left_servo_angle -= 0.25, MIN_ANGLE);
+      new_angle = max(left_servo_angle -= 0.25, MIN_ANGLE);
       left_servo_angle = new_angle;
     } 
     else {
-      double new_angle = min(left_servo_angle += 0.25, MAX_ANGLE);
+      new_angle = min(left_servo_angle += 0.25, MAX_ANGLE);
       left_servo_angle = new_angle;
     }
   }
@@ -241,11 +245,11 @@ void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get
   // Adjust right servo
   if(right_servo_incorrect){
     if(RIGHT_SENSOR_X_VALUE < MIDDLE){
-      double new_angle = max(right_servo_angle -= 0.25, MIN_ANGLE);
+      new_angle = max(right_servo_angle -= 0.25, MIN_ANGLE);
       right_servo_angle = new_angle;
     } 
     else {
-      double new_angle = min(right_servo_angle += 0.25, MAX_ANGLE);
+      new_angle = min(right_servo_angle += 0.25, MAX_ANGLE);
       right_servo_angle = new_angle;
     }
   }
@@ -268,7 +272,10 @@ void reset_ir_servo_angles(){
   left_servo.write(left_servo_angle);
 }
 
-int counter = 0;
+/**
+ * @brief Searches for the candle
+ * 
+ */
 void search_for_light(int* data){
   const double ROTATION_SPEED = 0.5;  
   const int NO_DATA = 1023;
@@ -307,10 +314,10 @@ void search_for_light(int* data){
   const int TIMES_TO_CHECK = 10;
   const int ERROR_MARGIN_DEG = 2;
   if (left_found && right_found){
-    counter++;
-    if(counter > TIMES_TO_CHECK){
+    search_for_light_ctr++;
+    if(search_for_light_ctr > TIMES_TO_CHECK){
       state = 2; // Follow light state
-      counter = 0;
+      search_for_light_ctr = 0;
     }
     return;
   }
