@@ -73,7 +73,8 @@ void ir_setup(){
     pinMode(ledPin, OUTPUT);      // Set the LED pin as output
     Wire.begin();
     // IR sensor initialize
-    // No one knows why these hex numbers work
+    // No one knows why these hex numbers work, probably black magic.
+    // Don't touch for any reason, you have been warned.
     write_2bytes(0x30,0x01); delay(10); 
     write_2bytes(0x30,0x08); delay(10);
     write_2bytes(0x06,0x90); delay(10);
@@ -255,6 +256,18 @@ void servo_follow_fire(int* data){ //TODO try different values for MARGIN to get
   calculate_candle_coords(data);
 }
 
+/**
+ * @brief Resets the angles of the left and right servo
+ * 
+ */
+void reset_ir_servo_angles(){
+  const int MIN_ANGLE = 20;
+  right_servo_angle = MIN_ANGLE;
+  right_servo.write(right_servo_angle);
+  left_servo_angle = MIN_ANGLE;
+  left_servo.write(left_servo_angle);
+}
+
 int counter = 0;
 void search_for_light(int* data){
   const double ROTATION_SPEED = 0.5;  
@@ -307,12 +320,7 @@ void search_for_light(int* data){
       state = 0;
     }
     
-    // Reset angle to try again
-    const int MIN_ANGLE = 20;
-    right_servo_angle = MIN_ANGLE;
-    right_servo.write(right_servo_angle);
-    left_servo_angle = MIN_ANGLE;
-    left_servo.write(left_servo_angle);
+    reset_ir_servo_angles();
     delay(1000);
   }
 }
@@ -374,12 +382,12 @@ void loop(){
   else if (state == 3) extinguish_fire(to_send);
   */
 
-  // First sensor
+  // Left sensor
   left_sensor_on(ir_bool); // change active sensor true is left, False is right
   ir_camera_loop(to_send); // do the communication
   ir_bool = !ir_bool;
 
-  // secound sensor
+  // Right sensor
   left_sensor_on(ir_bool); // change active sensor true is left, False is right
   ir_camera_loop(to_send); // do the communication
   ir_bool = !ir_bool;
