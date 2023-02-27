@@ -70,8 +70,6 @@ void ir_setup(){
     digitalWrite(left_ir, HIGH); // Can only handle one at a time
   
     slaveAddress = IRsensorAddress >> 1;   // This results in 0x21 as the address to pass to TWI
-    //Serial.begin(38400);
-    Serial.begin(115200);
     pinMode(ledPin, OUTPUT);      // Set the LED pin as output
     Wire.begin();
     // IR sensor initialize
@@ -343,6 +341,7 @@ int char_to_int(char character){
 }
 
 void setup(){
+  Serial.begin(115200);
   left_servo.attach(LEFT_SERVO_PIN);
   right_servo.attach(RIGHT_SERVO_PIN);
   arm_servo.attach(ARM_SERVO_PIN);
