@@ -346,7 +346,6 @@ void loop(){
 
   if (Serial.available()){
     String input = Serial.readString();
-    //state = input[0] - '0';
     char state_command = input[0];
     state = char_to_int(state_command);
   }
@@ -374,15 +373,14 @@ void loop(){
   else if (state == 2) servo_follow_fire(to_send);
   else if (state == 3) extinguish_fire(to_send);
   */
-  
 
   // First sensor
-  left_sensor_on(ir_bool);  // change active sensor true is left, False is right
+  left_sensor_on(ir_bool); // change active sensor true is left, False is right
   ir_camera_loop(to_send); // do the communication
   ir_bool = !ir_bool;
 
   // secound sensor
-  left_sensor_on(ir_bool);  // change active sensor true is left, False is right
+  left_sensor_on(ir_bool); // change active sensor true is left, False is right
   ir_camera_loop(to_send); // do the communication
   ir_bool = !ir_bool;
 
