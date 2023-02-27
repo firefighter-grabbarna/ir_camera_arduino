@@ -359,7 +359,7 @@ void loop(){
   int to_send[6];
 
   if (Serial.available()){
-    String input = Serial.readString();
+    String input = Serial.readStringUntil('\n');
     char state_command = input[0];
     state = char_to_int(state_command);
   }
