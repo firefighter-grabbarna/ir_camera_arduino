@@ -1,9 +1,10 @@
 // Wii Remote IR sensor  test sample code  by kako
 // modified output for Wii-BlobTrack program by RobotFreak
 
-#include <Wire.h>
 #include <Arduino.h>
+#include <Wire.h>
 #include <Servo.h>
+#include "audio.h"
 
 int IRsensorAddress = 0xB0;
 int slaveAddress;
@@ -339,16 +340,20 @@ void setup(){
   right_servo.attach(RIGHT_SERVO_PIN);
   arm_servo.attach(ARM_SERVO_PIN);
   arm_servo.write(165);
+
   
   left_sensor_on(true);
   ir_setup();
   left_sensor_on(false); // turns on right sensor
   ir_setup();
   left_sensor_on(true);
+  while(!Serial);
 }
 
 void loop(){
   // 0: left x, 1: left y, 2: right x, 3: right y, 4: candle x, 5: candle y 
+
+
   int to_send[6];
 
   int prev_state = state;
