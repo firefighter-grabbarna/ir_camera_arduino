@@ -6,27 +6,42 @@
 #include <Servo.h>
 #include "audio.h"
 
+#include "notes.h"
+#include "melodies.cpp"
+
+/****************************************
+ * Pins
+*****************************************/
+//int ledPin = 13;
+int LEFT_SERVO_PIN = 11;
+int RIGHT_SERVO_PIN = 10;
+int ARM_SERVO_PIN = 9;
+const int RED_BUTTON_PIN = 12;
+const int GREEN_BUTTON_PIN = 13;
+int left_ir = 7;
+int right_ir = 6;
+const int BUZZER = 3;
+
+
+
 int IRsensorAddress = 0xB0;
 int slaveAddress;
-int ledPin = 13;
-boolean ledState = false;
+
+//boolean ledState = false;
 byte data_buf[16];
 int iter_val;
 
 bool ir_bool = true;
-int left_ir = 7;
-int right_ir = 6;
-int sensor_values[4]; // Remove?
-int outside_counter; // Remove?
 
+
+/****************************************
+ * Servo stuff
+*****************************************/
 double left_servo_angle = 90;
 double right_servo_angle = 90;
 Servo left_servo;
 Servo right_servo;
 Servo arm_servo;
-int LEFT_SERVO_PIN = 11;
-int RIGHT_SERVO_PIN = 10;
-int ARM_SERVO_PIN = 9;
 
 int state = 0;
 int search_for_light_ctr = 0;
@@ -34,6 +49,53 @@ int search_for_light_ctr = 0;
 int Ix[4];
 int Iy[4];
 int s;
+
+/****************************************
+ * Melody stuff
+*****************************************/
+#define melody short_melody
+/**
+ * @brief Plays a melody
+ * 
+ */
+void play_melody() {
+  // change this to make the song slower or faster
+  int tempo = 150;
+  int notes = sizeof(melody) / sizeof(melody[0]) / 2;
+
+  // this calculates the duration of a whole note in ms
+  int wholenote = (60000 * 2) / tempo;
+  int divider = 0, noteDuration = 0;
+
+  // iterate over the notes of the melody. 
+  // Remember, the array is twice the number of notes (notes + durations)
+  for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
+
+    // calculates the duration of each note
+    divider = melody[thisNote + 1];
+    if (divider > 0) {
+      // regular note, just proceed
+      noteDuration = (wholenote) / divider;
+    } else if (divider < 0) {
+      // dotted notes are represented with negative durations!!
+      noteDuration = (wholenote) / abs(divider);
+      noteDuration *= 1.5; // increases the duration in half for dotted notes
+    }
+
+    // we only play the note for 90% of the duration, leaving 10% as a pause
+    tone(BUZZER, melody[thisNote], noteDuration*0.9);
+
+    // Wait for the specief duration before playing the next note.
+    delay(noteDuration);
+    
+    // stop the waveform generation before the next note.
+    noTone(BUZZER);
+  }
+}
+
+/****************************************
+ * Melody stuff end
+*****************************************/
 
 /**
  * @brief Writes 2 bytes to slaveAddress.
@@ -71,7 +133,7 @@ void ir_setup(){
     digitalWrite(left_ir, HIGH); // Can only handle one at a time
   
     slaveAddress = IRsensorAddress >> 1;   // This results in 0x21 as the address to pass to TWI
-    pinMode(ledPin, OUTPUT);      // Set the LED pin as output
+    //pinMode(ledPin, OUTPUT);      // Set the LED pin as output
     Wire.begin();
     // IR sensor initialize
     // No one knows why these hex numbers work, probably black magic.
@@ -91,8 +153,8 @@ void ir_setup(){
  * @param output_arr The data to send to the ir-camera
  */
 void ir_camera_loop(int *output_arr){
-    ledState = !ledState;
-    if (ledState) { digitalWrite(ledPin,HIGH); } else { digitalWrite(ledPin,LOW); }
+    //ledState = !ledState;
+    // if (ledState) { digitalWrite(ledPin,HIGH); } else { digitalWrite(ledPin,LOW); }
 
     //IR sensor read
     Wire.beginTransmission(slaveAddress);
@@ -167,11 +229,12 @@ void send_data(int *data){
  * @param data Array where the coordinates (and more) are stored
  */
 void calculate_candle_coords(int *data){
-  const int DIST_ORIGIN_SENSORS_MM = 85;
+  const int DIST_ORIGIN_SENSORS_MM = 190/2;
+  const int SERVO_OFFSET = 3;
 
   // Convert degrees to radians and mirror right servo angle
-  double left_servo_rad = (left_servo_angle) * PI / 180;
-  double right_servo_rad = -(right_servo_angle) * PI / 180;
+  double left_servo_rad = (left_servo_angle) * PI / 180 + SERVO_OFFSET;
+  double right_servo_rad = -(right_servo_angle) * PI / 180 + SERVO_OFFSET;
 
   // Parameter in line expressed in parametric form
   double parameter = 2 * DIST_ORIGIN_SENSORS_MM * sin(left_servo_rad) / sin(left_servo_rad + right_servo_rad);
@@ -308,6 +371,7 @@ void search_for_light(int* data){
     if(search_for_light_ctr > TIMES_TO_CHECK){
       state = 2; // Follow light state
       Serial.println("found");
+      //play_melody();
       search_for_light_ctr = 0;
     }
     return;
@@ -350,7 +414,25 @@ void setup(){
   while(!Serial);
 }
 
+// Pin 3 högtalare
+// Pin 12 knapp
+// Pin 13 knapp
+void listen_button() {
+  // listen to the button
+  if (digitalRead(RED_BUTTON_PIN) == LOW) {
+    Serial.println("stop");
+  }
+  if(digitalRead(GREEN_BUTTON_PIN) == HIGH){
+    Serial.println("start");
+    play_melody();
+  }
+}
+
+
 void loop(){
+  listen_button();
+  //Serial.println("loop");
+  
   // 0: left x, 1: left y, 2: right x, 3: right y, 4: candle x, 5: candle y 
 
 
@@ -363,6 +445,9 @@ void loop(){
     if (input[0] >= '0' && input[0] <= '9'){
       char state_command = input[0];
       state = char_to_int(state_command);
+    }
+    if (input[0] == 'S'){
+      Serial.println("sensor_arduino");
     }
   }
   //Serial.println(state);
