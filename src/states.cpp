@@ -66,6 +66,7 @@ void extinguish_fire(int* data){
 // unsigned long prev_time = 0;
 // double speed_left = 0;
 // double speed_right = 0;  
+int lost_fire_counter = 0;
 int servo_follow_fire(int* data){ //TODO try different values for MARGIN to get better accuracy
   const double MIN_ANGLE = 10;
   // const double MAX_ANGLE = 170;
@@ -75,6 +76,15 @@ int servo_follow_fire(int* data){ //TODO try different values for MARGIN to get 
   const int LEFT_SENSOR_X_VALUE = data[0];
   const int RIGHT_SENSOR_X_VALUE = data[2];
   int return_message = Result::RUNNING;
+
+  if (LEFT_SENSOR_X_VALUE == NO_DATA || RIGHT_SENSOR_X_VALUE == NO_DATA){
+    lost_fire_counter++;
+    if(lost_fire_counter > 1000){
+      
+      lost_fire_counter = 0;
+      return Result::FAILURE;
+    }
+  }
 
   bool left_servo_incorrect = (LEFT_SENSOR_X_VALUE < MIDDLE - MARGIN || LEFT_SENSOR_X_VALUE > MIDDLE + MARGIN)
                                && LEFT_SENSOR_X_VALUE != NO_DATA;
@@ -124,7 +134,7 @@ int servo_follow_fire(int* data){ //TODO try different values for MARGIN to get 
   int x_coord = data[4];
   int y_coord = data[5]; 
   const int MAX_DISTANCE_Y = 180, MAX_DISTANCE_X = 30;
-  if (y_coord < MAX_DISTANCE_Y && abs(x_coord+50) < MAX_DISTANCE_X){
+  if (y_coord < MAX_DISTANCE_Y && abs(x_coord+20) < MAX_DISTANCE_X){
     // return_message = 1;
     return_message = Result::SUCCESS;
   }

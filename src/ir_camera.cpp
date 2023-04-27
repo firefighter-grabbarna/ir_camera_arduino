@@ -107,7 +107,6 @@ void left_sensor_on(bool left_on){
 
 
 void print_data(int *data){
-  Serial.print("Data: ");
   int array_size = 6;
   for(int i = 0; i < array_size; i++){
     Serial.print(data[i]);

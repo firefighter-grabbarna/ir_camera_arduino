@@ -37,21 +37,36 @@ void setup(){
 }
 
 
-static int state = 0;
+static int state = -1;
+
+// todo
+// 1. inplement function for buttons
+// 2. print array all the time
+// 3. timeout på follow fire
 
 
 void loop(){
   int to_send[6];
   int result;
   get_ir_values(to_send);
-  listen_button();
+
+  if(listen_button() == 2){
+    state = 0; // if startbutton pressed, start robot
+    play_melody();
+  }
+  if(listen_button() == 1){
+    state = 6; // if startbutton pressed, start robot
+    play_melody();
+  }
   
   int new_state = read_serial();
   if(new_state != -1) {
     state = new_state;
   }
 
-  Serial.println(state);
+  Serial.print(state); //print current state
+  Serial.print(","); //print current state
+  print_data(to_send); //print cordinates of candle
 
   switch(state){
     case 1:
