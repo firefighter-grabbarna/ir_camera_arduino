@@ -51,7 +51,7 @@ void loop(){
   get_ir_values(to_send);
   int prev_state = state;
 
-  if(listen_button() == 2){
+  if(listen_button() == 2 || microphone_iteration()){
     state = 0; // if startbutton pressed, start robot
     play_melody();
   }

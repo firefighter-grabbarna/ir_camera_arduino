@@ -13,8 +13,8 @@
 const int BUZZER = 3;
 
 
-void microphone_iteration()
-{
+bool microphone_iteration(){
+
 
   /*
   These values can be changed in order to evaluate the functions
@@ -52,7 +52,17 @@ void microphone_iteration()
   FFT2.ComplexToMagnitude(vReal, vImag, samples); /* Compute magnitudes */
 
   double x = FFT2.MajorPeak(vReal, samples, samplingFrequency);
-  Serial.println(x);
+  return (900.0 < x) && (x < 1100.0);
+  // int counter = 0;
+  // if (hz_conditional){
+  //     counter += 1;
+  //     if (counter > 10){
+  //         return true;
+  //     }
+  // } else {
+  //     counter = 0;
+  // }
+  // return false;
 }
 
 

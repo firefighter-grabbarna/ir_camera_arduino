@@ -11,7 +11,7 @@
 
 #define melody short_melody
 
-void microphone_iteration();
+bool microphone_iteration();
 void play_melody();
 
 #endif
