@@ -49,6 +49,7 @@ void loop(){
   int to_send[6];
   int result;
   get_ir_values(to_send);
+  int prev_state = state;
 
   if(listen_button() == 2){
     state = 0; // if startbutton pressed, start robot
@@ -64,10 +65,6 @@ void loop(){
     state = new_state;
   }
 
-  Serial.print(state); //print current state
-  Serial.print(","); //print current state
-  print_data(to_send); //print cordinates of candle
-
   switch(state){
     case 1:
       result = search_for_light(to_send);
@@ -79,15 +76,18 @@ void loop(){
       break;
     case 2:
       result = servo_follow_fire(to_send);
-      if(result == Result::SUCCESS) state = 3;
-      else if(result == Result::FAILURE) state = 1; // not implemented
+      // if(result == Result::SUCCESS) ; // do nothing
+      if(result == Result::FAILURE) state = 1; // not implemented
       break;
     case 3:
       extinguish_fire(to_send);
       state = 0;
       break;
     case 4:
-      print_data(to_send); // for debugging
+        Serial.print(prev_state); //print current state
+        Serial.print(","); //print current state
+        print_data(to_send); //print cordinates of candle
+      state = prev_state;
       break;
     case 5:
       center_servos();    // for debugging
