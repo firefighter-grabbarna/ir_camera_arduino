@@ -36,6 +36,19 @@ void setup(){
   servo_setup();
 }
 
+bool mic_start(){
+
+  bool start_robot = false;
+  for (int i = 0; i < 10; i++) {
+    if (!microphone_iteration()){
+      break;
+    }
+    if (i == 9) {
+      start_robot = true;
+    }
+  }
+  return start_robot;
+}
 
 static int state = -1;
 
@@ -44,12 +57,15 @@ static int state = -1;
 // 2. print array all the time
 // 3. timeout på follow fire
 
+
 void loop(){
   int to_send[6];
   int result;
   get_ir_values(to_send);
   int prev_state = state;
-  if (state == -1 && microphone_iteration()) {
+    
+  
+  if (state == -1 && mic_start()) {
     state = 0;
   }
   if(listen_button() == 2){
