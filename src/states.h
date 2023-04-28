@@ -10,7 +10,7 @@ int search_for_light(int* data);
 int listen_button();
 
 void calculate_candle_coords(int *data);
-void extinguish_fire(int *data);
+void extinguish_fire();
 void reset_ir_servo_angles();
 void center_servos();
 void servo_setup();

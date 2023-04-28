@@ -45,12 +45,12 @@ void servo_setup(){
  * 
  * @param data Used to reset x and y coordinates of candle.
  */
-void extinguish_fire(int* data){
-  const int NO_DATA = 1023;
+void extinguish_fire(){
+  // const int NO_DATA = 1023;
   const int MIN_ANGLE = 20;
   const int MAX_ANGLE = 165;
-  data[4] = NO_DATA;
-  data[5] = NO_DATA;
+  // data[4] = NO_DATA;
+  // data[5] = NO_DATA;
   arm_servo.write(MIN_ANGLE);
   delay(2000);
   arm_servo.write(MAX_ANGLE);
@@ -131,13 +131,13 @@ int servo_follow_fire(int* data){ //TODO try different values for MARGIN to get 
   calculate_candle_coords(data);
 
   // If the light is close enough to be extinguished 
-  int x_coord = data[4];
-  int y_coord = data[5]; 
-  const int MAX_DISTANCE_Y = 180, MAX_DISTANCE_X = 30;
-  if (y_coord < MAX_DISTANCE_Y && abs(x_coord+20) < MAX_DISTANCE_X){
-    // return_message = 1;
-    return_message = Result::SUCCESS;
-  }
+  // int x_coord = data[4];
+  // int y_coord = data[5]; 
+  // const int MAX_DISTANCE_Y = 180, MAX_DISTANCE_X = 30;
+  // if (y_coord < MAX_DISTANCE_Y && abs(x_coord+20) < MAX_DISTANCE_X){
+  //   // return_message = 1;
+  //   return_message = Result::SUCCESS;
+  // }
   return return_message;
 }
 
@@ -248,29 +248,32 @@ void reset_ir_servo_angles(){
  * @param data Array where the coordinates (and more) are stored
  */
 void calculate_candle_coords(int *data){
+  // Serial.println("hesjan");
   const int DIST_ORIGIN_SENSORS_MM = 190/2;
   const int SERVO_OFFSET = 3;
 
   // Convert degrees to radians and mirror right servo angle
-  double left_servo_rad = (left_servo_angle) * PI / 180 + SERVO_OFFSET;
-  double right_servo_rad = -(right_servo_angle) * PI / 180 + SERVO_OFFSET;
+  // double left_servo_rad = (left_servo_angle) * PI / 180 + SERVO_OFFSET;
+  // double right_servo_rad = -(right_servo_angle) * PI / 180 + SERVO_OFFSET;
 
   // Parameter in line expressed in parametric form
-  double parameter = 2 * DIST_ORIGIN_SENSORS_MM * sin(left_servo_rad) / sin(left_servo_rad + right_servo_rad);
+  // double parameter = 2 * DIST_ORIGIN_SENSORS_MM * sin(left_servo_rad) / sin(left_servo_rad + right_servo_rad);
   
   // Coordinates of the light assuming origin in-between the two IR-cameras
-  double x_coord = -cos(right_servo_rad) * parameter + DIST_ORIGIN_SENSORS_MM;
-  double y_coord = sin(right_servo_rad) * parameter;
+  // double x_coord = -cos(right_servo_rad) * parameter + DIST_ORIGIN_SENSORS_MM;
+  // double y_coord = sin(right_servo_rad) * parameter;
   
-  data[4] = (int) x_coord;
-  data[5] = (int) y_coord;
+  data[4] = (int) left_servo_angle;
+  data[5] = (int) right_servo_angle;
+  // data[4] = 420;
+  // data[5] = 1337;
 }
 
 
 void center_servos(){
   const int MIDDLE = 90;
-  left_servo.write(MIDDLE);
-  right_servo.write(MIDDLE);
+  left_servo.write(MIDDLE-25);
+  right_servo.write(MIDDLE+10);
 }
 
 
